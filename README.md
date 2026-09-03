@@ -625,7 +625,7 @@
       <a-grid width="160" height="300" position="0 0.01 -110" opacity="0.15" color="#38bdf8"></a-grid>
 
       <!-- CAMERA RIG -->
-      <a-entity id="rig" position="0 1.6 10" mobile-joystick vr-movement-gain="multiplier: 8">
+      <a-entity id="rig" position="0 1.6 10" mobile-joystick vr-movement-gain="multiplier: 20">
         <a-camera look-controls wasd-controls="fly: true; acceleration: 70">
           <a-cursor fuse="true" fuse-timeout="1500" raycaster="objects: .interativo, .teleport-pad" color="#38bdf8"></a-cursor>
         </a-camera>
