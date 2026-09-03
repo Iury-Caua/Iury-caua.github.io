@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +7,7 @@
 <body>
   <div>
     <button> 
-      <a href="https://iury-caua.github.io/cidadela-bia.html/">REALIDADE VIRTUAL</a>
+      <a href="https://iury-caua.github.io/cidadela-bia.html">REALIDADE VIRTUAL</a>
     </button>
   </div>
 
