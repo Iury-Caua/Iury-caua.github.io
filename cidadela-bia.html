@@ -36,12 +36,41 @@
         max-width: 420px;
         backdrop-filter: blur(10px);
       }
+      #hud-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
       #vr-hud h1 {
         font-size: 1.2rem;
         margin: 0 0 6px 0;
         color: #38bdf8;
         text-transform: uppercase;
         letter-spacing: 1px;
+      }
+      #hud-header h1 { margin: 0; }
+      .hud-btn-min {
+        flex-shrink: 0;
+        background: transparent;
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.5);
+        border-radius: 6px;
+        width: 30px;
+        height: 30px;
+        font-size: 1rem;
+        line-height: 1;
+        cursor: pointer;
+        margin: 0;
+        padding: 0;
+      }
+      .hud-btn-min:hover { background: rgba(56, 189, 248, 0.15); }
+      #vr-hud.hud-minimizado {
+        max-width: 220px;
+        padding: 12px 16px;
+      }
+      #vr-hud.hud-minimizado #hud-body {
+        display: none;
       }
       #vr-hud p {
         font-size: 0.9rem;
@@ -116,6 +145,7 @@
 
       window.DisciplinasMap = {};
       window.ModoConflitoAtivo = false;
+      window.DisciplinaSelecionadaAtual = null;
 
       // COMPONENTE ARQUITETÔNICO DE DISCIPLINA (PRÉDIO REAL)
       AFRAME.registerComponent('edificio-disciplina', {
@@ -188,11 +218,22 @@
           // Eventos de Interação
           el.addEventListener('click', (evt) => {
             evt.stopPropagation();
+            const codigoClicado = data.codigo;
+
+            // Se a disciplina clicada já é a que está selecionada, desativa o efeito
+            if (window.DisciplinaSelecionadaAtual === codigoClicado) {
+              window.resetarCenario();
+              return;
+            }
+
             if (window.ModoConflitoAtivo) {
               this.simularImpactoTrancamento();
             } else {
               this.executarEfeitoCascata();
             }
+            // Definido depois do efeito, pois executarEfeitoCascata/simularImpactoTrancamento
+            // chamam resetarCenario() internamente, o que zeraria a seleção se fosse antes.
+            window.DisciplinaSelecionadaAtual = codigoClicado;
           });
 
           el.addEventListener('mouseenter', () => {
@@ -452,15 +493,73 @@
   }
 });
 
+      // AMPLIFICADOR DE MOVIMENTO EM VR
+      // Multiplica o deslocamento físico real (rastreamento posicional do celular)
+      // para que cada passo real percorra mais distância na cidade.
+      // Só atua dentro de uma sessão VR ativa; não afeta o teclado (WASD) no PC.
+      AFRAME.registerComponent('vr-movement-gain', {
+        schema: { multiplier: { type: 'number', default: 4 } },
+
+        init: function () {
+          this.lastCamPos = new THREE.Vector3();
+          this.temUltimaPos = false;
+          this.deltaAcumulado = new THREE.Vector3();
+        },
+
+        tick: function () {
+          if (!this.el.sceneEl.is('vr-mode')) {
+            this.temUltimaPos = false;
+            return;
+          }
+
+          const camera = this.el.querySelector('a-camera');
+          if (!camera || !camera.object3D) return;
+
+          const camPos = camera.object3D.position;
+
+          if (!this.temUltimaPos) {
+            this.lastCamPos.copy(camPos);
+            this.temUltimaPos = true;
+            return;
+          }
+
+          this.deltaAcumulado.subVectors(camPos, this.lastCamPos);
+          this.deltaAcumulado.y = 0; // não amplifica agachar/levantar, só deslocamento horizontal
+
+          if (this.deltaAcumulado.lengthSq() > 0.000001) {
+            const extra = this.deltaAcumulado.clone().multiplyScalar(this.data.multiplier - 1);
+            this.el.object3D.position.add(extra);
+          }
+
+          this.lastCamPos.copy(camPos);
+        }
+      });
+
       window.resetarCenario = function () {
         Object.keys(window.DisciplinasMap).forEach(k => {
           window.DisciplinasMap[k].resetarEstilo();
         });
 
+        window.DisciplinaSelecionadaAtual = null;
+
         const hudStatus = document.getElementById('hud-status');
         const cardDetalhes = document.getElementById('card-detalhes');
         if (hudStatus) hudStatus.innerHTML = 'Clique em um pavilhão para visualizar a rede de dependências em cascata.';
         if (cardDetalhes) cardDetalhes.style.display = 'none';
+      };
+
+      window.toggleHud = function () {
+        const hud = document.getElementById('vr-hud');
+        const btn = document.getElementById('btn-minimizar');
+        if (!hud || !btn) return;
+        hud.classList.toggle('hud-minimizado');
+        if (hud.classList.contains('hud-minimizado')) {
+          btn.innerText = '＋';
+          btn.title = 'Expandir painel';
+        } else {
+          btn.innerText = '－';
+          btn.title = 'Minimizar painel';
+        }
       };
 
       window.toggleModoConflito = function () {
@@ -483,12 +582,17 @@
   <body>
     <!-- HUD DE INTERFACE DO USUÁRIO -->
     <div id="vr-hud">
-      <h1>Cidadela Engenharia Mecânica UFC</h1>
-      <p id="hud-status">Clique em um pavilhão para visualizar a rede de dependências em cascata.</p>
-      <div id="card-detalhes"></div>
-      <div>
-        <button class="hud-btn" onclick="window.resetarCenario()">↺ Redefinir Vista</button>
-        <button id="btn-conflito" class="hud-btn" onclick="window.toggleModoConflito()">⚡ Simulador de Trancamento</button>
+      <div id="hud-header">
+        <h1>Cidadela Engenharia Mecânica UFC</h1>
+        <button class="hud-btn-min" id="btn-minimizar" onclick="window.toggleHud()" title="Minimizar painel">－</button>
+      </div>
+      <div id="hud-body">
+        <p id="hud-status">Clique em um pavilhão para visualizar a rede de dependências em cascata.</p>
+        <div id="card-detalhes"></div>
+        <div>
+          <button class="hud-btn" onclick="window.resetarCenario()">↺ Redefinir Vista</button>
+          <button id="btn-conflito" class="hud-btn" onclick="window.toggleModoConflito()">⚡ Simulador de Trancamento</button>
+        </div>
       </div>
     </div>
 
@@ -521,9 +625,9 @@
       <a-grid width="160" height="300" position="0 0.01 -110" opacity="0.15" color="#38bdf8"></a-grid>
 
       <!-- CAMERA RIG -->
-      <a-entity id="rig" position="0 1.6 10" mobile-joystick>
+      <a-entity id="rig" position="0 1.6 10" mobile-joystick vr-movement-gain="multiplier: 20">
         <a-camera look-controls wasd-controls="fly: true; acceleration: 70">
-          <a-cursor fuse="false" raycaster="objects: .interativo, .teleport-pad" color="#38bdf8"></a-cursor>
+          <a-cursor fuse="true" fuse-timeout="1500" raycaster="objects: .interativo, .teleport-pad" color="#38bdf8"></a-cursor>
         </a-camera>
         <a-entity laser-controls="hand: right" raycaster="objects: .interativo, .teleport-pad"></a-entity>
         <a-entity laser-controls="hand: left" raycaster="objects: .interativo, .teleport-pad"></a-entity>
