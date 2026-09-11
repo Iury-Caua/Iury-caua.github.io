@@ -536,10 +536,10 @@
       });
 
       // LOCOMOÇÃO POR TOQUE EM VR (funciona mesmo sem rastreamento posicional/6DoF)
-      // Segure o dedo na tela olhando para a direção desejada para andar para frente.
-      // Solte para parar. Um toque rápido (tap) continua funcionando normalmente
-      // para clicar em prédios/portais (cascata/teletransporte), com deslocamento
-      // desprezível nesse meio tempo.
+      // Um toque olhando para um ponto "livre" liga o andar para frente contínuo;
+      // outro toque desliga. Se você estiver mirando de perto (até ~4,5m) em um
+      // prédio/portal, o toque vira o clique normal (cascata/teletransporte) em
+      // vez de ligar/desligar o andar.
       AFRAME.registerComponent('vr-walk-locomotion', {
         schema: { speed: { type: 'number', default: 1.8 } },
 
@@ -547,8 +547,7 @@
           this.andando = false;
           this.direcaoCam = new THREE.Vector3();
           this.anexado = false;
-          this.onDown = this.onDown.bind(this);
-          this.onUp = this.onUp.bind(this);
+          this.onTap = this.onTap.bind(this);
           this.tentarAnexar = this.tentarAnexar.bind(this);
 
           this.tentarAnexar();
@@ -558,21 +557,22 @@
         tentarAnexar: function () {
           const canvas = this.el.sceneEl.canvas;
           if (!canvas || this.anexado) return;
-          canvas.addEventListener('mousedown', this.onDown);
-          canvas.addEventListener('touchstart', this.onDown);
-          canvas.addEventListener('mouseup', this.onUp);
-          canvas.addEventListener('touchend', this.onUp);
-          canvas.addEventListener('touchcancel', this.onUp);
+          canvas.addEventListener('click', this.onTap);
           this.anexado = true;
         },
 
-        onDown: function () {
+        onTap: function () {
           if (!this.el.sceneEl.is('vr-mode')) return;
-          this.andando = true;
-        },
 
-        onUp: function () {
-          this.andando = false;
+          const cursor = document.getElementById('cursor-vr');
+          const rc = cursor && cursor.components && cursor.components.raycaster;
+          if (rc && rc.intersectedEls && rc.intersectedEls.length > 0) {
+            // mirando de perto em algo interativo -> deixa o clique normal cuidar disso
+            this.andando = false;
+            return;
+          }
+
+          this.andando = !this.andando;
         },
 
         tick: function (time, delta) {
@@ -683,7 +683,7 @@
       <!-- CAMERA RIG -->
       <a-entity id="rig" position="0 1.6 10" mobile-joystick vr-movement-gain="multiplier: 4" vr-walk-locomotion="speed: 1.8">
         <a-camera look-controls wasd-controls="fly: true; acceleration: 70">
-          <a-cursor id="cursor-vr" fuse="false" raycaster="objects: .interativo, .teleport-pad" color="#38bdf8"></a-cursor>
+          <a-cursor id="cursor-vr" fuse="false" raycaster="objects: .interativo, .teleport-pad; far: 4.5" color="#38bdf8"></a-cursor>
         </a-camera>
         <a-entity laser-controls="hand: right" raycaster="objects: .interativo, .teleport-pad"></a-entity>
         <a-entity laser-controls="hand: left" raycaster="objects: .interativo, .teleport-pad"></a-entity>
