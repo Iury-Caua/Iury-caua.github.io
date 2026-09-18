@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8">
-    <title>Cidadela Interativa - Engenharia Mecânica UFC (Escala Real)</title>
+    <title>Cidade Interativa - Engenharia Mecânica UFC (Escala Real)</title>
     <!-- Biblioteca A-Frame 1.4.0 -->
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
@@ -12,7 +12,7 @@
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 50%;
+  width: 40%;
   height: 40%; /* Ocupa a metade de baixo da tela */
   z-index: 998; /* Fica abaixo do HUD */
   touch-action: none;
@@ -169,6 +169,7 @@
           this.corpoPredio = el.querySelector('.predio-corpo');
           this.placaFacade = el.querySelector('.placa-facade');
           this.textoNome = el.querySelector('.texto-nome');
+          this.porta = el.querySelector('.porta');
 
           // --- EXPANSÃO DA ÁREA DE CLIQUE (HITBOX INVISÍVEL AMPLA) ---
           const hitBox = document.createElement('a-box');
@@ -389,6 +390,15 @@
               transparent: opacidade < 1
             });
           }
+          if (this.porta) {
+            this.porta.setAttribute('material', {
+              color: corHex,
+              emissive: corEmissive,
+              emissiveIntensity: opacidade > 0.5 ? 0.6 : 0.1,
+              opacity: opacidade,
+              transparent: opacidade < 1
+            });
+          }
         },
 
         resetarEstilo: function () {
@@ -405,6 +415,15 @@
           if (this.placaFacade) {
             this.placaFacade.setAttribute('material', {
               color: '#0f172a',
+              emissive: '#000000',
+              emissiveIntensity: 0,
+              opacity: 1.0,
+              transparent: false
+            });
+          }
+          if (this.porta) {
+            this.porta.setAttribute('material', {
+              color: '#624e34',
               emissive: '#000000',
               emissiveIntensity: 0,
               opacity: 1.0,
@@ -536,10 +555,10 @@
       });
 
       // LOCOMOÇÃO POR TOQUE EM VR (funciona mesmo sem rastreamento posicional/6DoF)
-      // Um toque olhando para um ponto "livre" liga o andar para frente contínuo;
-      // outro toque desliga. Se você estiver mirando de perto (até ~4,5m) em um
-      // prédio/portal, o toque vira o clique normal (cascata/teletransporte) em
-      // vez de ligar/desligar o andar.
+      // Segure o dedo na tela olhando para a direção desejada para andar para frente.
+      // Solte para parar. Um toque rápido (tap) continua funcionando normalmente
+      // para clicar em prédios/portais (cascata/teletransporte), com deslocamento
+      // desprezível nesse meio tempo.
       AFRAME.registerComponent('vr-walk-locomotion', {
         schema: { speed: { type: 'number', default: 1.8 } },
 
@@ -547,7 +566,8 @@
           this.andando = false;
           this.direcaoCam = new THREE.Vector3();
           this.anexado = false;
-          this.onTap = this.onTap.bind(this);
+          this.onDown = this.onDown.bind(this);
+          this.onUp = this.onUp.bind(this);
           this.tentarAnexar = this.tentarAnexar.bind(this);
 
           this.tentarAnexar();
@@ -557,22 +577,21 @@
         tentarAnexar: function () {
           const canvas = this.el.sceneEl.canvas;
           if (!canvas || this.anexado) return;
-          canvas.addEventListener('click', this.onTap);
+          canvas.addEventListener('mousedown', this.onDown);
+          canvas.addEventListener('touchstart', this.onDown);
+          canvas.addEventListener('mouseup', this.onUp);
+          canvas.addEventListener('touchend', this.onUp);
+          canvas.addEventListener('touchcancel', this.onUp);
           this.anexado = true;
         },
 
-        onTap: function () {
+        onDown: function () {
           if (!this.el.sceneEl.is('vr-mode')) return;
+          this.andando = true;
+        },
 
-          const cursor = document.getElementById('cursor-vr');
-          const rc = cursor && cursor.components && cursor.components.raycaster;
-          if (rc && rc.intersectedEls && rc.intersectedEls.length > 0) {
-            // mirando de perto em algo interativo -> deixa o clique normal cuidar disso
-            this.andando = false;
-            return;
-          }
-
-          this.andando = !this.andando;
+        onUp: function () {
+          this.andando = false;
         },
 
         tick: function (time, delta) {
@@ -653,56 +672,104 @@
     </div>
 
     <a-scene cursor="rayOrigin: mouse" raycaster="objects: .interativo, .teleport-pad">
+      <a-assets>
+        <a-asset-item id="sky" src="./image/citrus_orchard_road_puresky_2k.hdr"></a-asset-item>
+        <a-asset-item id="bench-obj" src="./modelos/Bench_HighRes.obj"></a-asset-item>
+        <a-asset-item id="bench-mtl" src="./modelos/Bench_HighRes.mtl"></a-asset-item>
+        <a-asset-item id="tree3" src="./modelos/a_ilha_arvores_low_poly.glb"></a-asset-item>
+        <a-asset-item id="poste" src="./modelos/poste_de_iluminacao.glb"></a-asset-item>
+        <a-asset-item id="fonte" src="./modelos/fonte.glb"></a-asset-item>
+        <a-asset-item id="arbusto" src="./modelos/arbustos.glb"></a-asset-item>
+      </a-assets>
       
       <!-- LUZES E AMBIENTE URBANO -->
       <a-light type="ambient" color="#fff" intensity="1.1"></a-light>
       <a-light type="directional" color="#ffffff" intensity="0.9" position="-20 40 20"></a-light>
 
-      <a-sky color="#87CEEB"></a-sky>
+      <a-sky  color="#87CEEB"></a-sky>
 
       <!-- PISO URBANO EXPANDIDO PARA COBRIR TODOS OS SEMESTRES -->
       <a-plane position="0 -0.1 -110" rotation="-90 0 0" width="160" height="300" color="#4d6f39"></a-plane>
-      <a-plane position="0 0 -110" rotation="-90 0 0" width="3" height="300" color="#1e293b"></a-plane>
-      <a-plane position="9 0 -95" rotation="-90 0 0" width="3" height="170" color="#1e293b"></a-plane>
-      <a-plane position="-9 0 -95" rotation="-90 0 0" width="3" height="170" color="#1e293b"></a-plane>
-      <a-plane position="18 0 -85" rotation="-90 0 0" width="3" height="150" color="#1e293b"></a-plane>
-      <a-plane position="-18 0 -85" rotation="-90 0 0" width="3" height="150" color="#1e293b"></a-plane>
+      <a-plane position="0 0.01 -110" rotation="-90 0 0" width="3" height="300" color="#6e697b"></a-plane>
+      <a-plane position="9 0.01 -95" rotation="-90 0 0" width="3" height="170" color="#6e697b"></a-plane>
+      <a-plane position="-9 0.01 -95" rotation="-90 0 0" width="3" height="170" color="#6e697b"></a-plane>
+      <a-plane position="18 0.01 -85" rotation="-90 0 0" width="3" height="150" color="#6e697b"></a-plane>
+      <a-plane position="-18 0.01 -85" rotation="-90 0 0" width="3" height="150" color="#6e697b"></a-plane>
 
-      <a-plane position="0 0 -10" rotation="-90 90 0" width="3" height="39" color="#1e293b"></a-plane>
-      <a-plane position="0 0 -30" rotation="-90 90 0" width="3" height="39" color="#1e293b"></a-plane>
-      <a-plane position="0 0 -50" rotation="-90 90 0" width="3" height="39" color="#1e293b"></a-plane>
-      <a-plane position="0 0 -70" rotation="-90 90 0" width="3" height="39" color="#1e293b"></a-plane>
-      <a-plane position="0 0 -90" rotation="-90 90 0" width="3" height="49" color="#1e293b"></a-plane>
-      <a-plane position="0 0 -110" rotation="-90 90 0" width="3" height="39" color="#1e293b"></a-plane>
-      <a-plane position="0 0 -130" rotation="-90 90 0" width="3" height="39" color="#1e293b"></a-plane>
-      <a-plane position="0 0 -150" rotation="-90 90 0" width="3" height="39" color="#1e293b"></a-plane>
-      <a-plane position="0 0 -170" rotation="-90 90 0" width="3" height="19" color="#1e293b"></a-plane>
+      <!-- concreto horizontal -->
+
+      <a-plane position="0 0.01 -10" rotation="-90 90 0" width="3" height="39" color="#6e697b"></a-plane>
+      <a-plane position="0 0.01 -30" rotation="-90 90 0" width="3" height="39" color="#6e697b"></a-plane>
+      <a-plane position="0 0.01 -50" rotation="-90 90 0" width="3" height="39" color="#6e697b"></a-plane>
+      <a-plane position="0 0.01 -70" rotation="-90 90 0" width="3" height="39" color="#6e697b"></a-plane>
+      <a-plane position="0 0.01 -90" rotation="-90 90 0" width="3" height="49" color="#6e697b"></a-plane>
+      <a-plane position="0 0.01 -110" rotation="-90 90 0" width="3" height="39" color="#6e697b"></a-plane>
+      <a-plane position="0 0.01 -130" rotation="-90 90 0" width="3" height="39" color="#6e697b"></a-plane>
+      <a-plane position="0 0.01 -150" rotation="-90 90 0" width="3" height="39" color="#6e697b"></a-plane>
+      <a-plane position="0 0.01 -170" rotation="-90 90 0" width="3" height="19" color="#6e697b"></a-plane>
+
+      <!-- calçada horizontal -->
+
+      <a-plane position="0 0 -10" rotation="-90 90 0" width="4" height="40" color="#1e293b"></a-plane>
+      <a-plane position="0 0 -30" rotation="-90 90 0" width="4" height="39" color="#1e293b"></a-plane>
+      <a-plane position="0 0 -50" rotation="-90 90 0" width="4" height="39" color="#1e293b"></a-plane>
+      <a-plane position="0 0 -70" rotation="-90 90 0" width="4" height="39" color="#1e293b"></a-plane>
+      <a-plane position="0 0 -90" rotation="-90 90 0" width="4" height="49" color="#1e293b"></a-plane>
+      <a-plane position="0 0 -110" rotation="-90 90 0" width="4" height="39" color="#1e293b"></a-plane>
+      <a-plane position="0 0 -130" rotation="-90 90 0" width="4" height="39" color="#1e293b"></a-plane>
+      <a-plane position="0 0 -150" rotation="-90 90 0" width="4" height="39" color="#1e293b"></a-plane>
+      <a-plane position="0 0 -170" rotation="-90 90 0" width="4" height="19" color="#1e293b"></a-plane>
+
+      <!-- calçada vertical -->
+
+      <a-plane position="0 -0.1 -110" rotation="-90 0 0" width="160" height="300" color="#4d6f39"></a-plane>
+      <a-plane position="0 0 -110" rotation="-90 0 0" width="4" height="300" color="#1e293b"></a-plane>
+      <a-plane position="9 0 -95" rotation="-90 0 0" width="4" height="170" color="#1e293b"></a-plane>
+      <a-plane position="-9 0 -95" rotation="-90 0 0" width="4" height="170" color="#1e293b"></a-plane>
+      <a-plane position="18 0 -85" rotation="-90 0 0" width="4" height="150" color="#1e293b"></a-plane>
+      <a-plane position="-18 0 -85" rotation="-90 0 0" width="4" height="150" color="#1e293b"></a-plane>
+
+
+      <!-- fontes e esculturas -->
+      <a-plane position="0 0 4" rotation="-90 90 0" width="3" height="20" color="#1e293b"></a-plane>
+
+      <a-cylinder position="-12 0.02 4" radius="2.5" height="0.08" color="#1e293b"></a-cylinder>
+      <a-cylinder position="12 0.02 4" radius="2.5" height="0.08" color="#1e293b"></a-cylinder>
+
+      <a-cylinder position="-12 0.02 10.1" radius="0.5" height="0.05" color="#1e293b"></a-cylinder>
+      <a-cylinder position="12 0.02 10.1" radius="0.5" height="0.05" color="#1e293b"></a-cylinder>
+
+      <a-plane position="12 0.001 4" rotation="-90 0 0" width="15" height="15" color="#1e293b"></a-plane>
+      <a-plane position="-12 0.001 4" rotation="-90 0 0" width="15" height="15" color="#1e293b"></a-plane>
+
+      <a-plane position="12 0.01 4" rotation="-90 0 0" width="14" height="14" color="#6e697b"></a-plane>
+      <a-plane position="-12 0.01 4" rotation="-90 0 0" width="14" height="14" color="#6e697b"></a-plane>
 
       <a-grid width="160" height="300" position="0 0.01 -110" opacity="0.15" color="#38bdf8"></a-grid>
 
       <!-- CAMERA RIG -->
       <a-entity id="rig" position="0 1.6 10" mobile-joystick vr-movement-gain="multiplier: 4" vr-walk-locomotion="speed: 1.8">
         <a-camera look-controls wasd-controls="fly: true; acceleration: 70">
-          <a-cursor id="cursor-vr" fuse="false" raycaster="objects: .interativo, .teleport-pad; far: 4.5" color="#38bdf8"></a-cursor>
+          <a-cursor id="cursor-vr" fuse="false" raycaster="objects: .interativo, .teleport-pad" color="#38bdf8"></a-cursor>
         </a-camera>
         <a-entity laser-controls="hand: right" raycaster="objects: .interativo, .teleport-pad"></a-entity>
         <a-entity laser-controls="hand: left" raycaster="objects: .interativo, .teleport-pad"></a-entity>
       </a-entity>
 
       <!-- PONTOS DE TELETRANSPORTE URBANO -->
-      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 5" position="0 0.05 5" radius="1.2" height="0.1" color="#38bdf8" material="opacity: 0.7; transparent: true">
+      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 5" position="0 0.05 0" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
         <a-text value="ENTRADA / HUB" align="center" position="0 0.2 0" rotation="-90 0 0" width="4" color="#ffffff"></a-text>
       </a-cylinder>
 
-      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -35" position="0 0.05 -30" radius="1.2" height="0.1" color="#38bdf8" material="opacity: 0.7; transparent: true">
+      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -35" position="0 0.05 -30" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
         <a-text value="CIENCIAS BASICAS" align="center" position="0 0.2 0" rotation="-90 0 0" width="4" color="#ffffff"></a-text>
       </a-cylinder>
 
-      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -95" position="0 0.05 -90" radius="1.2" height="0.1" color="#38bdf8" material="opacity: 0.7; transparent: true">
+      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -95" position="0 0.05 -90" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
         <a-text value="ENGENHARIA APLICADA" align="center" position="0 0.2 0" rotation="-90 0 0" width="4" color="#ffffff"></a-text>
       </a-cylinder>
 
-      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -160" position="0 0.05 -160" radius="1.2" height="0.1" color="#38bdf8" material="opacity: 0.7; transparent: true">
+      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -160" position="0 0.05 -160" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
         <a-text value="SISTEMAS E TCC" align="center" position="0 0.2 0" rotation="-90 0 0" width="4" color="#ffffff"></a-text>
       </a-cylinder>
 
@@ -714,11 +781,48 @@
       <!-- ======================================================== -->
       <!-- SEMESTRE 1 (Z = -15)                                    -->
       <!-- ======================================================== -->
-      <a-text value="1º SEMESTRE" position="-4 0.2 -9.5" rotation="-80 0 0" width="30" color="#fff"></a-text>
+
+      <!-- ENFEITES DA CIDADE -->
+
+      <!-- BANCOS -->
+
+      <a-entity obj-model="obj: #bench-obj;  mtl: #bench-mtl" scale="0.017 0.017 0.017" position="12 0 -2" rotation="0 0 0"></a-entity>
+      <a-entity obj-model="obj: #bench-obj;  mtl: #bench-mtl" scale="0.017 0.017 0.017" position="18 0 4" rotation="0 -90 0"></a-entity>
+      <a-entity obj-model="obj: #bench-obj;  mtl: #bench-mtl" scale="0.017 0.017 0.017" position="-18 0 4" rotation="0 90 0"></a-entity>
+      <a-entity obj-model="obj: #bench-obj;  mtl: #bench-mtl" scale="0.017 0.017 0.017" position="-12 0 -2" rotation="0 0 0"></a-entity>
+
+      <!-- VEGETAÇÃO -->
+
+      <a-gltf-model src="#tree3" position="-17 0 0" rotation="0 90 0"  scale="0.8 0.8 0.8"> </a-gltf-model>
+      <a-gltf-model src="#tree3" position="17 0 -30" rotation="0 -90 0"  scale="0.8 0.8 0.8"> </a-gltf-model>
+      <a-gltf-model src="#tree3" position="-17 0 -100" rotation="0 90 0"  scale="0.8 0.8 0.8"> </a-gltf-model>
+      <a-gltf-model src="#tree3" position="17 0 -130" rotation="0 -90 0"  scale="0.8 0.8 0.8"> </a-gltf-model>
+      
+      <a-gltf-model src="#arbusto" position="14 0 -19" rotation="0 0 0"  scale="1 1 1"> </a-gltf-model>
+      <a-gltf-model src="#arbusto" position="-13 0 -19" rotation="0 0 0"  scale="1 1 1"> </a-gltf-model>
+
+
+      <!-- FONTES -->
+
+      <a-gltf-model src="#fonte" position="12 0 -22.7" rotation="0 0 0" > </a-gltf-model>
+      <a-gltf-model src="#fonte" position="-12 0 -22.7" rotation="0 0 0" > </a-gltf-model>
+
+      <!-- POSTES -->
+
+      <a-gltf-model src="#poste" position="12 -0.27 10" rotation="0 0 0" scale="0.005 0.005 0.005"> </a-gltf-model>
+      <a-gltf-model src="#poste" position="-12 -0.27 10" rotation="0 0 0" scale="0.005 0.005 0.005"> </a-gltf-model>
+
+
+
+      <a-plane position="0 6 -8.6" rotation="10 0 0" material="opacity: 0.8" width="9" height="2" color="#1e293b"></a-plane>
+        <a-text value="1º SEMESTRE" position="-4 6 -8.5" rotation="10 0 0" width="30" color="#fff"></a-text>
+
+
 
       <a-entity class="interativo" edificio-disciplina="codigo: CC0265; nome: Probabilidade e Estatística; semestre: 1; creditos: 4; ch: 64h; descricao: Estatística descritiva, probabilidades e distribuições discretas e contínuas." position="-18 0 -15">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="CC0265" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="PROBABILIDADE E ESTAT." align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -728,6 +832,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: CD0384; nome: Experimentos de Física; semestre: 1; creditos: 2; ch: 32h; descricao: Práticas laboratoriais sobre mecânica clássica e medições de grandezas físicas." position="-9 0 -15">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="CD0384" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="EXP. DE FISICA" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -737,6 +842,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: CE0900; nome: Química Aplicada; semestre: 1; creditos: 4; ch: 64h; descricao: Estequiometria, ligações químicas e reações fundamentais para materiais." position="0 0 -15">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="CE0900" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="QUIMICA APLICADA" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -746,6 +852,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0259; nome: Intro Eng Mecânica; semestre: 1; creditos: 3; ch: 48h; descricao: Visão geral da profissão, áreas da engenharia mecânica e ética profissional." position="9 0 -15">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0259" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="INTRO ENG MECANICA" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -755,6 +862,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TL0017; nome: Cálculo I; semestre: 1; creditos: 4; ch: 64h; descricao: Limites, derivadas e aplicações de taxas de variação em física e engenharia." position="18 0 -15">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TL0017" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="CALCULO I" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -765,11 +873,13 @@
       <!-- ======================================================== -->
       <!-- SEMESTRE 2 (Z = -35)                                    -->
       <!-- ======================================================== -->
-      <a-text value="2º SEMESTRE" position="-4 0.2 -27" rotation="-80 0 0" width="30" color="#fff"></a-text>
+      <a-plane position="0 6 -27.6" rotation="10 0 0" material="opacity: 0.8" width="9" height="2" color="#1e293b"></a-plane>
+        <a-text value="2º SEMESTRE" position="-4 6 -27.5" rotation="10 0 0" width="30" color="#fff"></a-text>
 
       <a-entity class="interativo" edificio-disciplina="codigo: CB0706; nome: Álgebra Linear; semestre: 2; creditos: 4; ch: 64h; descricao: Espaços vetoriais, matrizes e transformações lineares." position="-18 0 -35">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="CB0706" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="ALGEBRA LINEAR" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -779,6 +889,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: CD0381; nome: Física I; semestre: 2; creditos: 4; ch: 64h; descricao: Mecânica newtoniana, conservação de energia e quantidade de movimento." position="-9 0 -35">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="CD0381" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="FISICA I" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -788,6 +899,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: CK0270; nome: Programação Computacional; semestre: 2; creditos: 4; ch: 64h; descricao: Algoritmos e linguagens de programação para solução de engenharia." position="0 0 -35">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="CK0270" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="PROG. COMPUTACIONAL" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -797,6 +909,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TL0015; nome: Expressão Gráfica; semestre: 2; creditos: 4; ch: 64h; descricao: Projeções ortogonais, desenho técnico e introdução ao CAD." position="9 0 -35">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TL0015" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="EXPRESSAO GRAFICA" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -806,6 +919,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TL0018; nome: Cálculo II; semestre: 2; creditos: 4; ch: 64h; prerequisitos: TL0017; descricao: Integrais definidas e técnicas de integração para cálculo de volumes." position="18 0 -35">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TL0018" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="CALCULO II" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -816,11 +930,13 @@
       <!-- ======================================================== -->
       <!-- SEMESTRE 3 (Z = -55)                                    -->
       <!-- ======================================================== -->
-      <a-text value="3º SEMESTRE" position="-4 0.2 -49.5" rotation="-80 0 0" width="30" color="#fff"></a-text>
+      <a-plane position="0 6 -49.6" rotation="10 0 0" material="opacity: 0.8" width="9" height="2" color="#1e293b"></a-plane>
+        <a-text value="3º SEMESTRE" position="-4 6 -49.5" rotation="10 0 0" width="30" color="#fff"></a-text>
 
       <a-entity class="interativo" edificio-disciplina="codigo: CB0707; nome: Cálculo III; semestre: 3; creditos: 4; ch: 64h; prerequisitos: TL0018; descricao: Funções de várias variáveis, derivadas parciais e integrais múltiplas." position="-18 0 -55">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="CB0707" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="CALCULO III" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -830,6 +946,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: CD0382; nome: Física II; semestre: 3; creditos: 4; ch: 64h; prerequisitos: CD0381; descricao: Oscilações, ondas, termodinâmica teórica e fluidos." position="-9 0 -55">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="CD0382" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="FISICA II" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -839,6 +956,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0269; nome: Termodinâmica; semestre: 3; creditos: 4; ch: 64h; prerequisitos: TL0018, CD0381; descricao: Leis da termodinâmica, propriedades de substâncias puras e ciclos." position="0 0 -55">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0269" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="TERMODINAMICA" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -848,6 +966,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0270; nome: Estática; semestre: 3; creditos: 3; ch: 64h; prerequisitos: CD0381; descricao: Equilíbrio de corpos rígidos, treliças e estruturas de máquinas." position="9 0 -55">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0270" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="ESTATICA" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -857,6 +976,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TJ0056; nome: Eng. Materiais; semestre: 3; creditos: 4; ch: 64h; descricao: Estrutura cristalina e propriedades mecânicas dos materiais industriais." position="18 0 -55">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TJ0056" align="center" position="0 0.3 0.12" width="6" color="#38bdf8"></a-text>
           <a-text class="texto-nome" value="ENG. MATERIAIS" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -867,11 +987,13 @@
       <!-- ======================================================== -->
       <!-- SEMESTRE 4 (Z = -75)                                    -->
       <!-- ======================================================== -->
-      <a-text value="4º SEMESTRE" position="-4 0.2 -69.5" rotation="-80 0 0" width="30" color="#fff"></a-text>
+      <a-plane position="0 6 -69.6" rotation="10 0 0" material="opacity: 0.8" width="9" height="2" color="#1e293b"></a-plane>
+        <a-text value="4º SEMESTRE" position="-4 6 -69.5" rotation="10 0 0" width="30" color="#fff"></a-text>
 
       <a-entity class="interativo" edificio-disciplina="codigo: CB0708; nome: Eq. Diferenciais; semestre: 4; creditos: 4; ch: 64h; prerequisitos: CB0706, TL0018; descricao: EDOs de 1ª e 2ª ordem e Transformadas de Laplace." position="-18 0 -75">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="CB0708" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="EQ. DIFERENCIAIS" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -881,6 +1003,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: CD0383; nome: Física III; semestre: 4; creditos: 4; ch: 64h; prerequisitos: CD0382, CB0707; descricao: Eletromagnetismo, campos elétricos, magnéticos e equações de Maxwell." position="-9 0 -75">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="CD0383" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="FISICA III" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -890,6 +1013,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0273; nome: Dinâmica Fluidos I; semestre: 4; creditos: 4; ch: 64h; prerequisitos: CD0381, TL0018; descricao: Estática de fluidos, equações de Navier-Stokes e escoamentos." position="0 0 -75">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0273" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="DIN. FLUIDOS I" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -899,6 +1023,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0275; nome: Metrologia; semestre: 4; creditos: 3; ch: 64h; prerequisitos: CC0265; descricao: Instrumentos de medição, incertezas e calibração industrial." position="9 0 -75">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0275" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="METROLOGIA" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -908,6 +1033,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TH0220; nome: Eletrotécnica; semestre: 4; creditos: 2; ch: 32h; prerequisitos: TL0015, TL0017; descricao: Circuitos trifásicos, transformadores e motores elétricos." position="18 0 -75">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TH0220" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="ELETROTECNICA" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -918,11 +1044,13 @@
       <!-- ======================================================== -->
       <!-- SEMESTRE 5 (Z = -95)                                    -->
       <!-- ======================================================== -->
-      <a-text value="5º SEMESTRE" position="-4 0.2 -87" rotation="-80 0 0" width="30" color="#fff"></a-text>
+      <a-plane position="0 6 -95.6" rotation="10 0 0" material="opacity: 0.8" width="9" height="2" color="#1e293b"></a-plane>
+        <a-text value="5º SEMESTRE" position="-4 6 -95.5" rotation="10 0 0" width="30" color="#fff"></a-text>
 
       <a-entity class="interativo" edificio-disciplina="codigo: CK0175; nome: Cálculo Numérico; semestre: 5; creditos: 4; ch: 64h; prerequisitos: CK0270, CB0706; descricao: Métodos numéricos para equações diferenciais e sistemas." position="-22.5 0 -95">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="CK0175" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="CALCULO NUMERICO" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -932,6 +1060,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0271; nome: Dinâmica; semestre: 5; creditos: 4; ch: 64h; prerequisitos: TE0270, CB0707; descricao: Cinemática e cinética de partículas e sistemas de corpos rígidos." position="-13.5 0 -95">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0271" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="DINAMICA" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -941,6 +1070,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0277; nome: Mec. Sólidos I; semestre: 5; creditos: 3; ch: 64h; prerequisitos: TE0270; descricao: Tensão, deformação, torção, flexão e critérios de escoamento." position="-4.5 0 -95">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta"position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0277" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="MEC. SOLIDOS I" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -950,6 +1080,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0278; nome: Transf. Calor I; semestre: 5; creditos: 3; ch: 64h; prerequisitos: TE0273, TE0269; descricao: Condução e radiação térmica em regimes permanente e transiente." position="4.5 0 -95">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta"position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0278" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="TRANSF. CALOR I" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -959,6 +1090,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TJ0106; nome: Mat. Engenharia; semestre: 5; creditos: 4; ch: 64h; prerequisitos: TJ0056; descricao: Tratamentos térmicos, ligas metálicas, polímeros e cerâmicas." position="13.5 0 -95">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta"position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TJ0106" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="MAT. ENGENHARIA" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -968,6 +1100,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0274; nome: Dinâmica Fluidos II; semestre: 5; creditos: 4; ch: 64h; prerequisitos: TE0273; descricao: Escoamentos compressíveis, camada limite e turbulência." position="22.5 0 -95">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta"position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0274" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="DIN. FLUIDOS II" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -978,11 +1111,13 @@
       <!-- ======================================================== -->
       <!-- SEMESTRE 6 (Z = -115)                                   -->
       <!-- ======================================================== -->
-      <a-text value="6º SEMESTRE" position="-4 0.2 -109.5" rotation="-80 0 0" width="30" color="#fff"></a-text>
+      <a-plane position="0 6 -109.6" rotation="10 0 0" material="opacity: 0.8" width="9" height="2" color="#1e293b"></a-plane>
+        <a-text value="6º SEMESTRE" position="-4 6 -109.5" rotation="10 0 0" width="30" color="#fff"></a-text>
 
       <a-entity class="interativo" edificio-disciplina="codigo: TE0279; nome: Mec. Sólidos II; semestre: 6; creditos: 3; ch: 64h; prerequisitos: TE0277; descricao: Flambagem de colunas, vasos de pressão e fadiga em elements." position="-18 0 -115">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta"position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0279" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="MEC. SOLIDOS II" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -992,6 +1127,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0280; nome: Elem. Máquinas I; semestre: 6; creditos: 4; ch: 64h; prerequisitos: TE0277, TJ0106; descricao: Dimensionamento de parafusos, chavetas, molas e soldas." position="-9 0 -115">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta"position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0280" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="ELEM. MAQUINAS I" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1001,6 +1137,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0281; nome: Instrumentação; semestre: 6; creditos: 4; ch: 64h; prerequisitos: TH0220; descricao: Sensores, condicionadores de sinal e aquisição de dados." position="0 0 -115">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta"position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0281" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="INSTRUMENTACAO" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1010,6 +1147,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0282; nome: Motores Térmicos; semestre: 6; creditos: 3; ch: 64h; prerequisitos: TE0269; descricao: Motores de combustão interna, ciclos Otto/Diesel e turbinas a gás." position="9 0 -115">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta"position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0282" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="MOTORES TERMICOS" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1019,6 +1157,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0283; nome: Refrigeração; semestre: 6; creditos: 3; ch: 64h; prerequisitos: TE0269, TE0278; descricao: Ciclos de compressão de vapor, carga térmica e climatização." position="18 0 -115">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta"position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0283" align="center" position="0 0.3 0.12" width="6" color="#f59e0b"></a-text>
           <a-text class="texto-nome" value="REFRIGERACAO" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1029,11 +1168,13 @@
       <!-- ======================================================== -->
       <!-- SEMESTRE 7 (Z = -135)                                   -->
       <!-- ======================================================== -->
-      <a-text value="7º SEMESTRE" position="-4 0.2 -129.5" rotation="-80 0 0" width="30" color="#fff"></a-text>
+      <a-plane position="0 6 -135.6" rotation="10 0 0" material="opacity: 0.8" width="9" height="2" color="#1e293b"></a-plane>
+        <a-text value="7º SEMESTRE" position="-4 6 -135.5" rotation="10 0 0" width="30" color="#fff"></a-text>
 
       <a-entity class="interativo" edificio-disciplina="codigo: TE0284; nome: Transf. Calor II; semestre: 7; creditos: 3; ch: 64h; prerequisitos: TE0278; descricao: Convecção forçada e natural, trocadores de calor e ebulição." position="-18 0 -135">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta"position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0284" align="center" position="0 0.3 0.12" width="6" color="#a78bfa"></a-text>
           <a-text class="texto-nome" value="TRANSF. CALOR II" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1043,6 +1184,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0285; nome: Elem. Máquinas II; semestre: 7; creditos: 4; ch: 64h; prerequisitos: TE0280; descricao: Engrenagens cilíndricas, eixos, rolamentos e acoplamentos." position="-9 0 -135">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0285" align="center" position="0 0.3 0.12" width="6" color="#a78bfa"></a-text>
           <a-text class="texto-nome" value="ELEM. MAQUINAS II" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1052,6 +1194,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0286; nome: Proc. Fabricação I; semestre: 7; creditos: 4; ch: 64h; prerequisitos: TJ0106; descricao: Fundição, usinagem por torneamento, fresamento e furação." position="9 0 -135">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0286" align="center" position="0 0.3 0.12" width="6" color="#a78bfa"></a-text>
           <a-text class="texto-nome" value="PROC. FABRICACAO I" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1061,6 +1204,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0332; nome: Elementos Finitos; semestre: 7; creditos: 4; ch: 64h; prerequisitos: TE0270, TE0277; descricao: Análise estrutural computacional, discretização de malhas e CAE." position="18 0 -135">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0332" align="center" position="0 0.3 0.12" width="6" color="#a78bfa"></a-text>
           <a-text class="texto-nome" value="ELEMENTOS FINITOS" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1071,11 +1215,13 @@
       <!-- ======================================================== -->
       <!-- SEMESTRE 8 (Z = -155)                                   -->
       <!-- ======================================================== -->
-      <a-text value="8º SEMESTRE" position="-4 0.2 -149.5" rotation="-80 0 0" width="30" color="#fff"></a-text>
+      <a-plane position="0 6 -155.6" rotation="10 0 0" material="opacity: 0.8" width="9" height="2" color="#1e293b"></a-plane>
+        <a-text value="8º SEMESTRE" position="-4 6 -155.5" rotation="10 0 0" width="30" color="#fff"></a-text>
 
       <a-entity class="interativo" edificio-disciplina="codigo: TE0287; nome: Proc. Fabricação II; semestre: 8; creditos: 4; ch: 64h; prerequisitos: TE0286; descricao: Conformação plástica, soldagem e usinagem CNC avançada." position="-18 0 -155">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0287" align="center" position="0 0.3 0.12" width="6" color="#a78bfa"></a-text>
           <a-text class="texto-nome" value="PROC. FABRICACAO II" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1085,6 +1231,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0288; nome: Sist. Fluidomecânicos; semestre: 8; creditos: 4; ch: 64h; prerequisitos: TE0273; descricao: Bombas hidráulicas, ventiladores e compressores industriais." position="-9 0 -155">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0288" align="center" position="0 0.3 0.12" width="6" color="#a78bfa"></a-text>
           <a-text class="texto-nome" value="SIST. FLUIDOMECANICOS" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1094,6 +1241,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0289; nome: Sistemas de Controle; semestre: 8; creditos: 4; ch: 64h; prerequisitos: CB0708; descricao: Modelagem de sistemas, resposta no tempo e controladores PID." position="9 0 -155">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0289" align="center" position="0 0.3 0.12" width="6" color="#a78bfa"></a-text>
           <a-text class="texto-nome" value="SISTEMAS DE CONTROLE" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1103,6 +1251,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0334; nome: Mecatrônica; semestre: 8; creditos: 4; ch: 64h; prerequisitos: TE0281, TH0220; descricao: Integração de sistemas mecânicos, eletrônica e automação." position="18 0 -155">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0334" align="center" position="0 0.3 0.12" width="6" color="#a78bfa"></a-text>
           <a-text class="texto-nome" value="MECATRONICA" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1113,11 +1262,13 @@
       <!-- ======================================================== -->
       <!-- SEMESTRES 9 E 10 (ESTÁGIO E TCC) (Z = -175 A -195)      -->
       <!-- ======================================================== -->
-      <a-text value="9º E 10º SEMESTRES - ESTAGIO E TCC" position="0 6 -170" align="center" width="30" color="#fff"></a-text>
+      <a-plane position="0 6 -170.1" rotation="10 0 0" material="opacity: 0.8" width="25" height="2" color="#1e293b"></a-plane>
+        <a-text value="9º E 10º SEMESTRES - ESTAGIO E TCC" position="0 6 -170" align="center" width="30" rotation="10 0 0" color="#fff"></a-text>
 
       <a-entity class="interativo" edificio-disciplina="codigo: TE0290; nome: Estágio Supervisionado; semestre: 9; creditos: 10; ch: 160h; prerequisitos: TE0279, TE0283; descricao: Vivência prática profissional em empresas e indústrias da engenharia." position="-10 0 -175">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0290" align="center" position="0 0.3 0.12" width="6" color="#a78bfa"></a-text>
           <a-text class="texto-nome" value="ESTAGIO SUPERVISIONADO" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1127,6 +1278,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0291; nome: Projeto Eng. Mecânica / TCC I; semestre: 9; creditos: 2; ch: 32h; prerequisitos: TE0279; descricao: Elaboração da proposta e fundamentação teórica do TCC." position="10 0 -175">
         <a-box class="predio-corpo" width="6" height="4" depth="5" position="0 2 0" material="color: #1e293b; roughness: 0.5"></a-box>
         <a-box width="6.4" height="0.4" depth="5.4" position="0 4.2 0" material="color: #0f172a"></a-box>
+        <a-plane class="porta"position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="5.4" height="1.4" depth="0.2" position="0 3.3 2.55" material="color: #0f172a">
           <a-text value="TE0291" align="center" position="0 0.3 0.12" width="6" color="#a78bfa"></a-text>
           <a-text class="texto-nome" value="TCC I / PROJETO" align="center" position="0 -0.2 0.12" width="4.5" color="#ffffff" wrap-count="20"></a-text>
@@ -1136,6 +1288,7 @@
       <a-entity class="interativo" edificio-disciplina="codigo: TE0350; nome: Projeto Integrador / TCC II; semestre: 10; creditos: 6; ch: 96h; prerequisitos: TE0291; descricao: Desenvolvimento, redação final e defesa pública do Trabalho de Conclusão de Curso." position="0 0 -195">
         <a-box class="predio-corpo" width="7" height="5" depth="6" position="0 2.5 0" material="color: #311b92; roughness: 0.3"></a-box>
         <a-box width="7.4" height="0.5" depth="6.4" position="0 5.25 0" material="color: #1a237e"></a-box>
+        <a-plane class="porta" position="0 1 2.55" rotation="0 0 0" width="1.5" height="2.5" material="color: #624e34"></a-plane>
         <a-box class="placa-facade" width="6.2" height="1.6" depth="0.2" position="0 4.2 3.05" material="color: #0f172a">
           <a-text value="TE0350" align="center" position="0 0.35 0.12" width="7" color="#a78bfa"></a-text>
           <a-text class="texto-nome" value="TCC II / PROJETO FINAL" align="center" position="0 -0.25 0.12" width="5" color="#ffffff" wrap-count="20"></a-text>
