@@ -5,9 +5,9 @@
     <title>IntegraMec - Engenharia Mecânica - UFC</title>
 </head>
 <body>
-  <div>
+  <div style="text-align: center;">
     <button> 
-      <a href="https://iury-caua.github.io/cidade-interativa.html">REALIDADE VIRTUAL</a>
+      <a href="https://iury-caua.github.io/pages/cidade-interativa.html">REALIDADE VIRTUAL</a>
     </button>
   </div>
 
