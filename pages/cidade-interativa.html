@@ -439,13 +439,31 @@
 
       // COMPONENTE DE PONTO DE TELETRANSPORTE URBANO
       AFRAME.registerComponent('teleport-pad', {
-        schema: { targetPos: {type: 'string', default: '0 1.6 0'} },
+        schema: { targetPos: { type: 'vec3' } }, // Coordenada de destino
+
         init: function () {
-          this.el.addEventListener('click', () => {
-            const rig = document.getElementById('rig');
-            if (rig) {
-              SoundFX.playChime(440, 0.2);
-              rig.setAttribute('position', this.data.targetPos);
+          var el = this.el;
+          var data = this.data;
+          
+          // Captura o Rig (movimentação global) e a Câmera (visão do jogador)
+          var cameraRig = document.getElementById('rig'); 
+          var camera = document.querySelector('a-camera'); 
+
+          el.addEventListener('click', function () {
+            if (cameraRig) {
+              // 1. Move o Rig instantaneamente para as coordenadas absolutas
+              cameraRig.object3D.position.set(
+                data.targetPos.x, 
+                data.targetPos.y, 
+                data.targetPos.z
+              );
+              
+              // 2. Zera qualquer deslocamento "a pé" que o jogador tenha feito 
+              // (mantendo o eixo Y intacto para não afetar a altura)
+              if (camera) {
+                camera.object3D.position.x = 0;
+                camera.object3D.position.z = 0;
+              }
             }
           });
         }
@@ -749,7 +767,7 @@
 
       <!-- CAMERA RIG -->
       <a-entity id="rig" position="0 1.6 10" mobile-joystick vr-movement-gain="multiplier: 4" vr-walk-locomotion="speed: 1.8">
-        <a-camera look-controls wasd-controls="fly: true; acceleration: 70">
+        <a-camera look-controls wasd-controls="fly: true; acceleration: 70" position="0 0 0">
           <a-cursor id="cursor-vr" fuse="true" fuse-timeout="1500" raycaster="objects: .interativo, .teleport-pad" color="#38bdf8"></a-cursor>
         </a-camera>
         <a-entity laser-controls="hand: right" raycaster="objects: .interativo, .teleport-pad"></a-entity>
@@ -757,25 +775,27 @@
       </a-entity>
 
       <!-- PONTOS DE TELETRANSPORTE URBANO -->
-      <a-cylinder position="0 0 0" radius="0.5" height="1.5" color="#746ab0">
-        <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -10" position="0 1.51 0" radius="0.3" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
-          <!-- <a-text value="ENTRADA / HUB" align="center" position="0 0.2 0" rotation="-90 0 0" width="4" color="#ffffff"></a-text> -->
-        </a-cylinder>
+      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -7" position="0 0.05 0" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
+        <a-text value="ENTRADA / HUB" align="center" position="0 0.2 0" rotation="-90 0 0" width="4" color="#ffffff"></a-text>
       </a-cylinder>
         
-      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -35" position="0 0.05 -30" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
+      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -47" position="0 0.05 -30" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
         <a-text value="CIENCIAS BASICAS" align="center" position="0 0.2 0" rotation="-90 0 0" width="4" color="#ffffff"></a-text>
       </a-cylinder>
 
-      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -95" position="0 0.05 -90" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
+      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -67" position="0 0.05 -50" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
+        <a-text value="" align="center" position="0 0.2 0" rotation="-90 0 0" width="4" color="#ffffff"></a-text>
+      </a-cylinder>
+
+      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -107" position="0 0.05 -90" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
         <a-text value="ENGENHARIA APLICADA" align="center" position="0 0.2 0" rotation="-90 0 0" width="4" color="#ffffff"></a-text>
       </a-cylinder>
 
-      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -160" position="0 0.05 -160" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
+      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 1.6 -177" position="0 0.05 -160" radius="1.2" height="0.1" color="#ff6411" material="opacity: 0.7; transparent: true">
         <a-text value="SISTEMAS E TCC" align="center" position="0 0.2 0" rotation="-90 0 0" width="4" color="#ffffff"></a-text>
       </a-cylinder>
 
-      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 30 140" position="0 0.05 -210" radius="1.5" height="0.1" color="#8b5cf6" material="opacity: 0.8; transparent: true">
+      <a-cylinder class="teleport-pad" teleport-pad="targetPos: 0 12 40" position="0 0.05 -200" radius="1.5" height="0.1" color="#8b5cf6" material="opacity: 0.8; transparent: true">
         <a-text value="VISTA PANORAMICA" align="center" position="0 0.2 0" rotation="-90 0 0" width="5" color="#ffffff"></a-text>
       </a-cylinder>
 
