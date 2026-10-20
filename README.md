@@ -8,7 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-
     <!-- Header -->
     <header class="header">
         <div class="container">
@@ -30,7 +29,6 @@
             </div>
         </div>
     </header>
-
     <!-- Mobile Nav -->
     <div class="mobile-nav" id="mobileNav">
         <button class="mobile-nav-close" id="mobileNavClose">&times;</button>
@@ -40,11 +38,9 @@
         <a href="#reviews">Opiniões</a>
         <a href="#contact">Contato</a>
     </div>
-
     <!-- Hero -->
     <section class="hero">
         <div class="hero-visual">
-            
         </div>
         <div class="container">
             <div class="hero-content">
@@ -58,9 +54,6 @@
             </div>
         </div>
     </section>
-
-
-
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
@@ -109,21 +102,17 @@
             </div>
         </div>
     </footer>
-
     <!-- Back to Top -->
     <button class="back-to-top" id="backToTop" aria-label="Back to top">&#8593;</button>
-
     <script>
         // Mobile Nav
         document.getElementById('menuToggle').addEventListener('click', () => document.getElementById('mobileNav').classList.add('active'));
         document.getElementById('mobileNavClose').addEventListener('click', () => document.getElementById('mobileNav').classList.remove('active'));
         document.querySelectorAll('.mobile-nav a').forEach(l => l.addEventListener('click', () => document.getElementById('mobileNav').classList.remove('active')));
-
         // Back to Top
         const btt = document.getElementById('backToTop');
         window.addEventListener('scroll', () => btt.classList.toggle('visible', window.scrollY > 500));
         btt.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-
         // Smooth Scroll
         document.querySelectorAll('a[href^="#"]').forEach(a => {
             a.addEventListener('click', function(e) {
@@ -132,7 +121,6 @@
                 if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
         });
-
         // Scroll Animations
         const obs = new IntersectionObserver((entries) => {
             entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('animate-in'); obs.unobserve(e.target); } });
@@ -141,7 +129,6 @@
             el.classList.add('animate-target');
             obs.observe(el);
         });
-
         // Animated Watch Hands
         function updateClock() {
             const now = new Date();
